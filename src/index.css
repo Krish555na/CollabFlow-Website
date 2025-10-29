@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 * {
   margin: 0;
@@ -19,6 +19,10 @@ body {
   background: #000000;
   color: #ffffff;
   overflow-x: hidden;
+  cursor: none;
+}
+
+button, a, input, .interactive {
   cursor: none;
 }
 
@@ -79,6 +83,10 @@ body {
   transform: translateY(-2px);
 }
 
+.interactive:active {
+  transform: translateY(0px) scale(0.98);
+}
+
 /* Glass Morphism */
 .glass {
   background: rgba(255, 255, 255, 0.05);
@@ -137,10 +145,20 @@ body {
   html, body {
     cursor: auto;
   }
-  
+
+  button, a, input, .interactive {
+    cursor: auto;
+  }
+
   .interactive:hover {
     transform: none;
   }
+}
+
+/* Smooth Cursor Trail */
+@keyframes cursor-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 /* Focus Styles for Accessibility */

@@ -3,28 +3,56 @@ import { useEffect, useRef, useState } from 'react';
 
 function App() {
   const cursorRef = useRef<HTMLDivElement>(null);
+  const cursorDotRef = useRef<HTMLDivElement>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
+  const [isClicking, setIsClicking] = useState(false);
 
   useEffect(() => {
+    let animationFrameId: number;
+    const targetPosition = { x: 0, y: 0 };
+
     const updateMousePosition = (e: MouseEvent) => {
+      targetPosition.x = e.clientX;
+      targetPosition.y = e.clientY;
       setMousePosition({ x: e.clientX, y: e.clientY });
     };
+
+    const handleMouseDown = () => setIsClicking(true);
+    const handleMouseUp = () => setIsClicking(false);
 
     const handleMouseEnter = () => setIsHovering(true);
     const handleMouseLeave = () => setIsHovering(false);
 
-    window.addEventListener('mousemove', updateMousePosition);
+    const lerp = (start: number, end: number, factor: number) => {
+      return start + (end - start) * factor;
+    };
 
-    // Add hover listeners to interactive elements
-    const interactiveElements = document.querySelectorAll('button, a, .interactive');
+    const animateCursor = () => {
+      setCursorPosition(prev => ({
+        x: lerp(prev.x, targetPosition.x, 0.15),
+        y: lerp(prev.y, targetPosition.y, 0.15)
+      }));
+      animationFrameId = requestAnimationFrame(animateCursor);
+    };
+
+    animationFrameId = requestAnimationFrame(animateCursor);
+    window.addEventListener('mousemove', updateMousePosition);
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    const interactiveElements = document.querySelectorAll('button, a, .interactive, input');
     interactiveElements.forEach(el => {
       el.addEventListener('mouseenter', handleMouseEnter);
       el.addEventListener('mouseleave', handleMouseLeave);
     });
 
     return () => {
+      cancelAnimationFrame(animationFrameId);
       window.removeEventListener('mousemove', updateMousePosition);
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
       interactiveElements.forEach(el => {
         el.removeEventListener('mouseenter', handleMouseEnter);
         el.removeEventListener('mouseleave', handleMouseLeave);
@@ -37,16 +65,32 @@ function App() {
       {/* Custom Cursor */}
       <div
         ref={cursorRef}
-        className={`fixed pointer-events-none z-50 transition-all duration-200 ease-out ${
+        className={`fixed pointer-events-none z-50 transition-all duration-300 ease-out ${
           isHovering ? 'scale-150' : 'scale-100'
+        } ${
+          isClicking ? 'scale-75' : ''
         }`}
         style={{
-          left: mousePosition.x - 8,
-          top: mousePosition.y - 8,
+          left: `${cursorPosition.x}px`,
+          top: `${cursorPosition.y}px`,
+          transform: `translate(-50%, -50%) scale(${isHovering ? 1.5 : 1}) scale(${isClicking ? 0.75 : 1})`,
         }}
       >
-        <div className="w-4 h-4 bg-blue-500 rounded-full opacity-80 blur-sm"></div>
-        <div className="absolute inset-0 w-4 h-4 border border-blue-400 rounded-full animate-ping"></div>
+        <div className="w-8 h-8 border-2 border-blue-400 rounded-full"></div>
+        <div className="absolute inset-0 w-8 h-8 bg-blue-500/20 rounded-full blur-md"></div>
+      </div>
+      <div
+        ref={cursorDotRef}
+        className="fixed pointer-events-none z-50"
+        style={{
+          left: `${mousePosition.x}px`,
+          top: `${mousePosition.y}px`,
+          transform: 'translate(-50%, -50%)',
+        }}
+      >
+        <div className={`w-1.5 h-1.5 bg-blue-400 rounded-full transition-all duration-150 ${
+          isClicking ? 'scale-150' : 'scale-100'
+        }`}></div>
       </div>
 
       {/* Background Grid */}
@@ -84,8 +128,8 @@ function App() {
               <div className="relative hidden md:block">
                 <input
                   type="text"
-                  placeholder="Search..."
-                  className="bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 pl-10 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-300"
+                  placeholder="Search influencers, brands..."
+                  className="bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 pl-10 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:bg-gray-900/70 transition-all duration-300 w-48 focus:w-64"
                 />
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,15 +175,19 @@ function App() {
               successful promotional campaigns across all digital platforms.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-16">
-              <button className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl font-semibold text-white overflow-hidden interactive">
+              <button className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl font-semibold text-white overflow-hidden interactive shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:shadow-xl">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
                 <div className="relative flex items-center space-x-2">
                   <span>Get Started Free</span>
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                 </div>
               </button>
-              <button className="group flex items-center space-x-2 px-8 py-4 border border-gray-600 rounded-xl font-semibold text-gray-300 hover:text-white hover:border-gray-500 transition-all duration-300 interactive">
-                <Play className="w-5 h-5" />
+              <button className="group flex items-center space-x-2 px-8 py-4 border border-gray-600 rounded-xl font-semibold text-gray-300 hover:text-white hover:border-blue-500/50 hover:bg-blue-500/10 transition-all duration-300 interactive">
+                <div className="relative">
+                  <Play className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+                  <div className="absolute inset-0 bg-blue-400 rounded-full blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
+                </div>
                 <span>Watch Demo</span>
               </button>
             </div>
@@ -299,8 +347,8 @@ function App() {
                     <button
                       key={period}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 interactive ${
-                        index === 1 
-                          ? 'bg-blue-500 text-white' 
+                        index === 1
+                          ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
                           : 'text-gray-400 hover:text-white hover:bg-gray-800'
                       }`}
                     >
@@ -385,8 +433,12 @@ function App() {
               <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
                 Join thousands of brands and influencers already using CollabFlow to create impactful campaigns.
               </p>
-              <button className="group relative px-10 py-5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-bold text-lg text-white overflow-hidden interactive">
+              <button className="group relative px-10 py-5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-bold text-lg text-white overflow-hidden interactive shadow-2xl shadow-blue-500/40 hover:shadow-blue-500/60">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                </div>
                 <div className="relative flex items-center space-x-3">
                   <span>Start Your Journey</span>
                   <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
