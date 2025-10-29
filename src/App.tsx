@@ -1,58 +1,35 @@
-import { Zap, Users, TrendingUp, Sparkles, ArrowRight, Play, Eye, Heart, MousePointer, DollarSign, BarChart3 } from 'lucide-react';
+import { Zap, Users, TrendingUp, Sparkles, ArrowRight, Play, Eye, Heart, MousePointer, DollarSign, BarChart3, LogOut } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from './contexts/AuthContext';
+import { AuthModal } from './components/AuthModal';
 
 function App() {
+  const { user, signOut } = useAuth();
   const cursorRef = useRef<HTMLDivElement>(null);
-  const cursorDotRef = useRef<HTMLDivElement>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
-  const [isClicking, setIsClicking] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    let animationFrameId: number;
-    const targetPosition = { x: 0, y: 0 };
-
     const updateMousePosition = (e: MouseEvent) => {
-      targetPosition.x = e.clientX;
-      targetPosition.y = e.clientY;
       setMousePosition({ x: e.clientX, y: e.clientY });
     };
-
-    const handleMouseDown = () => setIsClicking(true);
-    const handleMouseUp = () => setIsClicking(false);
 
     const handleMouseEnter = () => setIsHovering(true);
     const handleMouseLeave = () => setIsHovering(false);
 
-    const lerp = (start: number, end: number, factor: number) => {
-      return start + (end - start) * factor;
-    };
-
-    const animateCursor = () => {
-      setCursorPosition(prev => ({
-        x: lerp(prev.x, targetPosition.x, 0.15),
-        y: lerp(prev.y, targetPosition.y, 0.15)
-      }));
-      animationFrameId = requestAnimationFrame(animateCursor);
-    };
-
-    animationFrameId = requestAnimationFrame(animateCursor);
     window.addEventListener('mousemove', updateMousePosition);
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mouseup', handleMouseUp);
 
-    const interactiveElements = document.querySelectorAll('button, a, .interactive, input');
+    const interactiveElements = document.querySelectorAll('button, a, .interactive');
     interactiveElements.forEach(el => {
       el.addEventListener('mouseenter', handleMouseEnter);
       el.addEventListener('mouseleave', handleMouseLeave);
     });
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
       window.removeEventListener('mousemove', updateMousePosition);
-      window.removeEventListener('mousedown', handleMouseDown);
-      window.removeEventListener('mouseup', handleMouseUp);
       interactiveElements.forEach(el => {
         el.removeEventListener('mouseenter', handleMouseEnter);
         el.removeEventListener('mouseleave', handleMouseLeave);
@@ -65,32 +42,16 @@ function App() {
       {/* Custom Cursor */}
       <div
         ref={cursorRef}
-        className={`fixed pointer-events-none z-50 transition-all duration-300 ease-out ${
+        className={`fixed pointer-events-none z-50 transition-all duration-200 ease-out ${
           isHovering ? 'scale-150' : 'scale-100'
-        } ${
-          isClicking ? 'scale-75' : ''
         }`}
         style={{
-          left: `${cursorPosition.x}px`,
-          top: `${cursorPosition.y}px`,
-          transform: `translate(-50%, -50%) scale(${isHovering ? 1.5 : 1}) scale(${isClicking ? 0.75 : 1})`,
+          left: mousePosition.x - 8,
+          top: mousePosition.y - 8,
         }}
       >
-        <div className="w-8 h-8 border-2 border-blue-400 rounded-full"></div>
-        <div className="absolute inset-0 w-8 h-8 bg-blue-500/20 rounded-full blur-md"></div>
-      </div>
-      <div
-        ref={cursorDotRef}
-        className="fixed pointer-events-none z-50"
-        style={{
-          left: `${mousePosition.x}px`,
-          top: `${mousePosition.y}px`,
-          transform: 'translate(-50%, -50%)',
-        }}
-      >
-        <div className={`w-1.5 h-1.5 bg-blue-400 rounded-full transition-all duration-150 ${
-          isClicking ? 'scale-150' : 'scale-100'
-        }`}></div>
+        <div className="w-4 h-4 bg-blue-500 rounded-full opacity-80 blur-sm"></div>
+        <div className="absolute inset-0 w-4 h-4 border border-blue-400 rounded-full animate-ping"></div>
       </div>
 
       {/* Background Grid */}
@@ -129,6 +90,8 @@ function App() {
                 <input
                   type="text"
                   placeholder="Search influencers, brands..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 pl-10 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:bg-gray-900/70 transition-all duration-300 w-48 focus:w-64"
                 />
                 <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
@@ -137,13 +100,36 @@ function App() {
                   </svg>
                 </div>
               </div>
-              <button className="relative p-2 rounded-lg hover:bg-white/10 transition-all duration-300 interactive">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7H4l5-5v5z" />
-                </svg>
-              </button>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 cursor-pointer interactive"></div>
+              {user ? (
+                <>
+                  <button className="relative p-2 rounded-lg hover:bg-white/10 transition-all duration-300 interactive">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7H4l5-5v5z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => signOut()}
+                    className="relative p-2 rounded-lg hover:bg-red-500/10 hover:text-red-400 transition-all duration-300 interactive"
+                    title="Sign Out"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 cursor-pointer interactive flex items-center justify-center text-white font-semibold text-sm">
+                    {user.email?.[0].toUpperCase()}
+                  </div>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    setAuthMode('signin');
+                    setAuthModalOpen(true);
+                  }}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition-all interactive"
+                >
+                  Sign In
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -175,7 +161,13 @@ function App() {
               successful promotional campaigns across all digital platforms.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-16">
-              <button className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl font-semibold text-white overflow-hidden interactive shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:shadow-xl">
+              <button
+                onClick={() => {
+                  setAuthMode('signup');
+                  setAuthModalOpen(true);
+                }}
+                className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl font-semibold text-white overflow-hidden interactive shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:shadow-xl"
+              >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
                 <div className="relative flex items-center space-x-2">
@@ -433,7 +425,13 @@ function App() {
               <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
                 Join thousands of brands and influencers already using CollabFlow to create impactful campaigns.
               </p>
-              <button className="group relative px-10 py-5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-bold text-lg text-white overflow-hidden interactive shadow-2xl shadow-blue-500/40 hover:shadow-blue-500/60">
+              <button
+                onClick={() => {
+                  setAuthMode('signup');
+                  setAuthModalOpen(true);
+                }}
+                className="group relative px-10 py-5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-bold text-lg text-white overflow-hidden interactive shadow-2xl shadow-blue-500/40 hover:shadow-blue-500/60"
+              >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -463,6 +461,12 @@ function App() {
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl animate-pulse"></div>
       </div>
+
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        mode={authMode}
+      />
     </div>
   );
 }
